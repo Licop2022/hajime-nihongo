@@ -24,6 +24,8 @@ jobs:
           node verify-journey.cjs
           node verify-audio.cjs
           node verify-romaji.cjs
+          node verify-cloud.cjs
+          node verify-cloud-ui.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static website
