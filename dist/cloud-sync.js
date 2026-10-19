@@ -7,7 +7,7 @@
  const put=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
  let client=null,user=null,applying=false,initPromise=null,timer=null,uiBusy=false,pendingPaint=false,binding=0;
  let owner=localStorage.getItem('hajime-cloud-owner-v1')||'guest';
- let status='尚未登录 · 本机自动保存',message='',lastSync='';
+ let status='尚未登录 · 本机自动保存',message='',lastSync='',importReceipt='';
  const snapshot=()=>({study:copy(state),real:copy(realState)});
  function normalize(name,payload){return name==='study'?cleanState(payload):cleanReal(payload);}
  function rememberLocal(){put(cacheKey(owner),snapshot());}
@@ -53,9 +53,13 @@
   $('#cloudConflicts').innerHTML=[...engine.conflicts.keys()].map(n=>`<div class="cloud-conflict"><h3>${n==='study'?'学习记录':'真题记录'}在两台设备上都有修改</h3><p>两份记录已在本机备份。请选择后继续同步；覆盖前可先导出备份。</p><button class="secondary" data-cloud-export="${n}">导出两份备份</button><button class="secondary" data-cloud-choice="remote" data-cloud-name="${n}">采用云端记录</button><button class="primary" data-cloud-choice="local" data-cloud-name="${n}">采用本机记录</button></div>`).join('');
  }
  function saveAllForOwner(){rememberLocal();}
+ function progressSummary(values){
+  const s=cleanState(values.study),r=cleanReal(values.real);
+  return `语法 ${s.completed.length} 课 · 假名 ${s.seen.length} 个 · 复习词汇 ${Object.keys(s.wordReviews).length} 个 · 单元步骤 ${Object.values(s.course.units).reduce((n,u)=>n+u.done.length,0)} 步 · 已自评单词 ${new Set(Object.values(s.course.units).flatMap(u=>u.ratings)).size} 个 · 入门 ${s.guide.foundation} 组 · 学习日 ${s.guide.number} · 真题历史 ${r.history.length} 次`;
+ }
  async function bindUser(next){
   if(user?.id===next?.id)return;
-  const generation=++binding;saveAllForOwner();engine.setUser(null);user=next||null;
+  const generation=++binding;saveAllForOwner();engine.setUser(null);user=next||null;importReceipt='';message='';
   const nextOwner=user?.id||'guest',cached=readJSON(cacheKey(nextOwner));owner=nextOwner;
   localStorage.setItem('hajime-cloud-owner-v1',owner);
   const values=cached||{study:cleanState(emptyState()),real:realEmpty()};
@@ -82,7 +86,7 @@
    const statuses=Object.values(result).map(x=>x?.status);renderConflicts();
    if(statuses.includes('conflict'))setStatus('存在两端修改 · 请打开云端同步处理');
    else if(statuses.includes('pending')){setStatus('同步未完成 · 本机记录保留，稍后重试');setMessage('请检查网络或重新登录。学习记录仍保存在本机。');}
-   else{lastSync=new Date().toLocaleString('zh-CN');setStatus('已同步 · '+lastSync);setMessage('');}
+   else{lastSync=new Date().toLocaleString('zh-CN');setStatus('已同步 · '+lastSync);setMessage(importReceipt);}
    if(pendingPaint)repaint();const summary=$('#cloudSummary');if(summary)summary.textContent='最近同步：'+lastSync;
   }catch(e){setStatus('同步未完成 · 本机记录保留');setMessage(e.message);}
  }
@@ -93,10 +97,22 @@
   pendingPaint=true;renderConflicts();await synchronize();
  }
  async function importGuest(){
+  if(!user)return;
+  // Finish any download before merging, so a first-login request cannot replace the import.
+  await synchronize();
+  const account=user?.id;if(!account)return;
   const guest=readJSON(cacheKey('guest'));if(!guest){setMessage('未找到登录前的本机记录。也可在学习档案导入原来导出的 JSON 文件。');return;}
+  const before=progressSummary(snapshot()),source=progressSummary(guest);
   // Union completed learning items while keeping ambiguous active sessions and drafts explicit as conflicts.
-  const a=state,b=cleanState(guest.study);b.completed=[...new Set([...a.completed,...b.completed])];b.seen=[...new Set([...a.seen,...b.seen])];b.textDone=[...new Set([...a.textDone,...b.textDone])];b.days=[...new Set([...a.days,...b.days])];b.wordReviews={...a.wordReviews,...b.wordReviews};b.mistakes={...a.mistakes,...b.mistakes};b.history=[...new Map([...a.history,...b.history].map(x=>[JSON.stringify(x),x])).values()].slice(-100);if(a.attempts>b.attempts){b.attempts=a.attempts;b.correct=a.correct;}b.course=mergeN5Course(a.course,b.course);applyDocument('study',b);
-  const incoming=cleanReal(guest.real);incoming.history=[...new Map([...realState.history,...incoming.history].map(x=>[JSON.stringify(x),x])).values()].slice(-100);if(realState.active)incoming.active=realState.active;applyDocument('real',incoming);localChanged();setMessage('本机原有记录已导入。若云端也有不同修改，将保留备份并提示选择。');await synchronize();repaint();
+  const a=state,b=cleanState(guest.study);b.completed=[...new Set([...a.completed,...b.completed])];b.seen=[...new Set([...a.seen,...b.seen])];b.textDone=[...new Set([...a.textDone,...b.textDone])];b.days=[...new Set([...a.days,...b.days])];b.wordReviews={...a.wordReviews,...b.wordReviews};b.mistakes={...a.mistakes,...b.mistakes};b.history=[...new Map([...a.history,...b.history].map(x=>[JSON.stringify(x),x])).values()].slice(-100);if(a.attempts>b.attempts){b.attempts=a.attempts;b.correct=a.correct;}b.course=mergeN5Course(a.course,b.course);
+  const current=a.guide,original=b.guide,done=g=>g.day?.steps.filter(t=>t.done).length||0;
+  const keepCurrent=current.foundation>original.foundation||current.foundation===original.foundation&&(current.number>original.number||current.number===original.number&&done(current)>done(original));
+  b.guide=copy(keepCurrent?current:original);b.guide.foundation=Math.max(current.foundation,original.foundation);b.guide.number=Math.max(current.number,original.number);b.guide.archive=[...new Map([...current.archive,...original.archive].map(x=>[JSON.stringify(x),x])).values()].slice(-60);
+  if(current.day?.writing&&current.day.writing!==original.day?.writing)put('hajime-cloud-import-backup-v1:'+account,{study:copy(a),real:copy(realState)});
+  for(const [day,values]of Object.entries(a.daily)){b.daily[day]??={};for(const [kind,n]of Object.entries(values))b.daily[day][kind]=Math.max(n,b.daily[day][kind]||0);}
+  applyDocument('study',b);
+  const incoming=cleanReal(guest.real);incoming.history=[...new Map([...realState.history,...incoming.history].map(x=>[JSON.stringify(x),x])).values()].slice(-100);if(realState.active)incoming.active=realState.active;applyDocument('real',incoming);localChanged();const after=progressSummary(snapshot());await synchronize();if(user?.id!==account)return;repaint();
+  importReceipt=`本机备份：${source}\n导入前：${before}\n导入后：${after}\n${before===after?'记录数量没有增加；当前账号可能已包含这些记录。导入不会额外增加学习进度。':'已合并本机记录。'}\n请查看上方同步状态；如有两端修改，请先选择要保留的版本。`;setMessage(importReceipt);
  }
  async function busy(action){if(uiBusy)return;uiBusy=true;try{await action();}catch(e){setMessage('操作未完成：'+e.message);}finally{uiBusy=false;}}
  document.addEventListener('submit',e=>{if(e.target.id!=='cloudLoginForm')return;e.preventDefault();busy(async()=>{await init();const {error}=await client.auth.signInWithPassword({email:$('#cloudEmail').value.trim(),password:$('#cloudPassword').value});if(error)throw error;$('#cloudPassword').value='';});});
