@@ -38,15 +38,15 @@
   save:async(u,n,p,r)=>{if(user?.id!==u)throw Error('账号已切换');const {data,error}=await client.rpc('hajime_save_progress',{p_namespace:n,p_payload:p,p_expected_revision:r});if(error)throw error;return data;}
  });
  const dialog=document.createElement('dialog');dialog.id='cloudDialog';
- dialog.innerHTML='<button class="close" id="cloudClose" aria-label="关闭云端同步">×</button><span class="label">STUDY ACROSS DEVICES</span><h2>账号与云端同步</h2><p id="cloudStatus" role="status"></p><div id="cloudAccount"></div><div id="cloudForms"></div><div id="cloudConflicts"></div><p id="cloudMessage" role="status"></p><p class="cloud-note">手机和电脑使用同一账号、同一个网站。未登录时只在本机保存；登录后同步课程、词汇、每日计划、草稿和真题记录。断网时保留本地进度，联网后重试。</p>';
+ dialog.innerHTML='<button class="close" id="cloudClose" aria-label="关闭云端同步">×</button><h2>账号与云端同步</h2><p id="cloudStatus" role="status"></p><div id="cloudAccount"></div><div id="cloudForms"></div><div id="cloudConflicts"></div><p id="cloudMessage" role="status"></p><p class="cloud-note">同一账号可在手机、电脑同步。断网时自动保存在本机。</p>';
  document.body.append(dialog);
  function setStatus(text){status=text;const el=$('#cloudStatus');if(el)el.textContent=text;const b=$('#cloudSyncButton');if(b){b.textContent=user?'☁ '+(text.includes('已同步')?'已同步':'云端同步'):'登录 / 同步';b.title=text;}}
  function setMessage(text){message=text;$('#cloudMessage').textContent=text;}
  function renderPanel(){
   setStatus(status);setMessage(message);
-  $('#cloudAccount').innerHTML=user?`<p class="cloud-account">已登录：<strong>${esc(user.email||'学习账号')}</strong></p><div class="toolbar"><button class="primary" id="cloudNow">立即同步</button><button class="secondary" id="cloudImportGuest">导入本机原有进度</button><button class="secondary" id="cloudLogout">退出账号</button></div><p id="cloudSummary">${lastSync?`最近同步：${esc(lastSync)}`:'首次登录会先读取云端记录。'}<br>退出后本机仍保留各账号的离线缓存；共用设备建议使用独立浏览器账号。</p>`:'';
+  $('#cloudAccount').innerHTML=user?`<p class="cloud-account">已登录：<strong>${esc(user.email||'学习账号')}</strong></p><div class="toolbar"><button class="primary" id="cloudNow">立即同步</button><button class="secondary" id="cloudImportGuest">导入本机原有进度</button><button class="secondary" id="cloudLogout">退出账号</button></div><p id="cloudSummary">${lastSync?`最近同步：${esc(lastSync)}`:'首次登录会先读取云端记录。'}<br>共用设备请使用独立浏览器账号。</p>`:'';
   // Auth inputs are only rebuilt when opening the dialog or when the session changes.
-  $('#cloudForms').innerHTML=user?'':cfg?'<form id="cloudLoginForm"><label for="cloudEmail">邮箱<input id="cloudEmail" type="email" autocomplete="username" required maxlength="254"></label><label for="cloudPassword">密码<input id="cloudPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label><div class="toolbar"><button class="primary" type="submit">登录并同步</button><button class="secondary" type="button" id="cloudSignup">注册账号</button></div><p class="cloud-note">首次注册后请按邮件提示验证邮箱，再回到这里登录。密码仅发送给 Supabase 身份认证服务，本站不保存密码。</p></form>':'<p class="cloud-note">云端服务暂未配置。本地学习与记录导出不受影响。</p>';
+  $('#cloudForms').innerHTML=user?'':cfg?'<form id="cloudLoginForm"><label for="cloudEmail">邮箱<input id="cloudEmail" type="email" autocomplete="username" required maxlength="254"></label><label for="cloudPassword">密码<input id="cloudPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label><div class="toolbar"><button class="primary" type="submit">登录并同步</button><button class="secondary" type="button" id="cloudSignup">注册账号</button></div><p class="cloud-note">注册后验证邮箱，再回来登录。</p></form>':'<p class="cloud-note">云端服务暂未配置。本地学习与记录导出不受影响。</p>';
   renderConflicts();
  }
  function renderConflicts(){
