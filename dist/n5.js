@@ -17,7 +17,7 @@ cleanState=function(raw){const s=cleanBeforeN5(raw),c=raw.course||{};s.course={u
  s.course.cursor={unit:n5Unit(c.cursor?.unit)?c.cursor.unit:null,stage:N5_STAGES.includes(c.cursor?.stage)?c.cursor.stage:"words1",tab:["course","kanji","sound","checks"].includes(c.cursor?.tab)?c.cursor.tab:"course"};
  return s;
 };
-try{const saved=JSON.parse(localStorage.getItem('hajime-study-v2')||'null');state=cleanState({...state,course:saved?.course,guide:saved?.guide||state.guide});}catch{state=cleanState(state);}
+try{const saved=startupStudyRecord||JSON.parse(localStorage.getItem('hajime-study-v2')||'null');state=cleanState({...state,course:saved?.course,guide:saved?.guide||state.guide});}catch{state=cleanState(state);}
 let n5Selected=state.course.cursor?.unit||null,n5Stage=state.course.cursor?.stage||'words1',n5Tab=state.course.cursor?.tab||'course',n5Search='';
 const persistBeforeN5=persist;
 persist=function(){state.course.cursor={unit:n5Selected,stage:n5Stage,tab:n5Tab};persistBeforeN5();};
