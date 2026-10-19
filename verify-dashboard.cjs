@@ -1,0 +1,9 @@
+const fs=require('fs'),assert=require('assert/strict');const src=fs.readFileSync('verify-n5.cjs','utf8');const boot=new Function('require',src.slice(0,src.indexOf('const t=boot();'))+'return boot;')(require);
+const t=boot();t.run(fs.readFileSync('dist/dashboard.js','utf8'));const click=dataset=>t.events.click.at(-1)({target:{closest:()=>({dataset,disabled:false})}});
+assert(t.els.get('#view').innerHTML.includes('今日安排'));assert.equal(t.run('dueWords().length'),0,'unseen words are not overdue reviews');
+t.run("const w=lw('N5')[0];state.wordReviews[w.id]={box:1,due:dateKey(),last:dateKey()}");assert.equal(t.run('dueWords().length'),1);click({homeReview:''});t.run('fromHash()');assert.equal(t.run('page'),'vocab');assert.equal(t.run('wordReviewMode'),'due');assert.equal(t.run('visibleWords().length'),1);
+t.run("go('home','N5');render(false);$('#foundationWorkspace').scrollIntoView=()=>{}");click({homeStep:'0'});assert(t.els.get('#foundationWorkspace').innerHTML.includes('finishFoundation'),'home task opens the actual foundation exercise');assert.equal(t.run('page'),'plan');
+t.run("state.guide.day.steps.forEach(x=>x.done=true);go('home');render(false)");const day=t.run('state.guide.number');click({homeNext:''});assert.equal(t.run('state.guide.number'),day+1);assert(t.run('state.guide.archive.length>0'));
+click({homeLevel:'N4'});t.run('fromHash()');assert.equal(t.run('level'),'N4');assert.equal(t.run('page'),'home');assert(t.els.get('#view').innerHTML.includes('进入 N4 课程'));
+t.run("recordAnswer(questionById('n4-g1'),(questionById('n4-g1').answer+1)%questionById('n4-g1').options.length)");click({homeMistakes:''});assert.equal(t.run('state.activeQuiz.mode'),'review');assert(t.run("state.activeQuiz.ids.includes('n4-g1')"));
+console.log('PASS: personalized dashboard, actual review counts, one-click task and mistake practice, manual next-day action and level switching.');
