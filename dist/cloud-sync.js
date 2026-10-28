@@ -30,7 +30,7 @@
  const engine=new window.HajimeCloudEngine({
   read:(u,n)=>{if(user?.id!==u)throw Error('账号已切换');return snapshot()[n];},
   apply:(u,n,p)=>{if(user?.id!==u)throw Error('账号已切换');applyDocument(n,p);pendingPaint=true;},
-  isEmpty:(n,p)=>n==='real'?!p.active&&!p.history.length:!p.completed.length&&!p.seen.length&&!p.attempts&&!p.days.length&&!Object.keys(p.wordReviews).length&&!p.textDone.length&&!p.course?.kanji?.length&&!Object.keys(p.course?.units||{}).some(id=>{const x=p.course.units[id];return x.done.length||x.ratings.length||Object.keys(x.answers).length||x.draft;})&&!(p.guide?.foundation||0)&&!p.guide?.archive?.length&&!p.guide?.day?.writing&&!p.activeQuiz&&['target','minutes','start'].every(k=>p.plan[k]===emptyState().plan[k]),
+  isEmpty:(n,p)=>n==='real'?!p.active&&!p.history.length:!p.completed.length&&!p.seen.length&&!p.attempts&&!p.days.length&&!Object.keys(p.wordReviews).length&&!p.textDone.length&&!p.course?.kanji?.length&&!Object.keys(p.course?.units||{}).some(id=>{const x=p.course.units[id];return x.done.length||x.ratings.length||Object.keys(x.answers).length||x.draft;})&&!(p.guide?.foundation||0)&&!p.guide?.archive?.length&&!p.guide?.day?.writing&&!p.activeQuiz&&!p.favorites?.length&&!Object.values(p.n4?.units||{}).some(u=>u.done.length||u.ratings.length||Object.keys(u.answers).length||Object.keys(u.review).length||u.draft)&&!Object.keys(p.n4?.final?.answers||{}).length&&['target','minutes','start'].every(k=>p.plan[k]===emptyState().plan[k]),
   checkpoint:async(u,n)=>readJSON(baseKey(u,n)),
   remember:async(u,n,d)=>put(baseKey(u,n),d),
   backup:async(u,n,d)=>{put('hajime-cloud-conflict-v1:'+u+':'+n,d);},
@@ -55,7 +55,7 @@
  function saveAllForOwner(){rememberLocal();}
  function progressSummary(values){
   const s=cleanState(values.study),r=cleanReal(values.real);
-  return `语法 ${s.completed.length} 课 · 假名 ${s.seen.length} 个 · 复习词汇 ${Object.keys(s.wordReviews).length} 个 · 单元步骤 ${Object.values(s.course.units).reduce((n,u)=>n+u.done.length,0)} 步 · 已自评单词 ${new Set(Object.values(s.course.units).flatMap(u=>u.ratings)).size} 个 · 入门 ${s.guide.foundation} 组 · 学习日 ${s.guide.number} · 真题历史 ${r.history.length} 次`;
+  return `语法 ${s.completed.length} 课 · 假名 ${s.seen.length} 个 · 复习词汇 ${Object.keys(s.wordReviews).length} 个 · 单元步骤 ${Object.values(s.course.units).reduce((n,u)=>n+u.done.length,0)} 步 · 已自评单词 ${new Set(Object.values(s.course.units).flatMap(u=>u.ratings)).size} 个 · 入门 ${s.guide.foundation} 组 · 学习日 ${s.guide.number} · N4 步骤 ${Object.values(s.n4?.units||{}).reduce((n,u)=>n+u.done.length,0)} 步 · 收藏 ${s.favorites?.length||0} 项 · 真题历史 ${r.history.length} 次`;
  }
  async function bindUser(next){
   if(user?.id===next?.id)return;
@@ -110,7 +110,7 @@
   b.guide=copy(keepCurrent?current:original);b.guide.foundation=Math.max(current.foundation,original.foundation);b.guide.number=Math.max(current.number,original.number);b.guide.archive=[...new Map([...current.archive,...original.archive].map(x=>[JSON.stringify(x),x])).values()].slice(-60);
   if(current.day?.writing&&current.day.writing!==original.day?.writing)put('hajime-cloud-import-backup-v1:'+account,{study:copy(a),real:copy(realState)});
   for(const [day,values]of Object.entries(a.daily)){b.daily[day]??={};for(const [kind,n]of Object.entries(values))b.daily[day][kind]=Math.max(n,b.daily[day][kind]||0);}
-  applyDocument('study',b);
+  if(typeof mergeStudyExtras==='function')mergeStudyExtras(a,b);applyDocument('study',b);
   const incoming=cleanReal(guest.real);incoming.history=[...new Map([...realState.history,...incoming.history].map(x=>[JSON.stringify(x),x])).values()].slice(-100);if(realState.active)incoming.active=realState.active;applyDocument('real',incoming);localChanged();const after=progressSummary(snapshot());await synchronize();if(user?.id!==account)return;repaint();
   importReceipt=`本机备份：${source}\n导入前：${before}\n导入后：${after}\n${before===after?'记录数量没有增加；当前账号可能已包含这些记录。导入不会额外增加学习进度。':'已合并本机记录。'}\n请查看上方同步状态；如有两端修改，请先选择要保留的版本。`;setMessage(importReceipt);
  }

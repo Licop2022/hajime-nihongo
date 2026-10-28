@@ -27,6 +27,7 @@ jobs:
           node verify-cloud.cjs
           node verify-cloud-ui.cjs
           node verify-dashboard.cjs
+          node verify-n4.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static website
