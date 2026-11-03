@@ -16,11 +16,11 @@ function cleanStructuredCourse(raw,units,level){
 }
 function cleanStudyExtras(raw){
  const favorite=k=>{if(typeof k!=='string')return false;const [kind,id,index]=k.split(':');if(kind==='word')return words.some(w=>w.id===id);const g=grammar.find(g=>g.id===id);return !!g&&(kind==='grammar'||kind==='example'&&/^\d+$/.test(index)&&Number(index)<g.examples.length);};
- const out={favorites:[...new Set((Array.isArray(raw.favorites)?raw.favorites:[]).filter(favorite))].slice(0,5000)};for(const [key,level,units]of structuredCourseSources())out[key]=cleanStructuredCourse(raw[key],units,level);return out;
+ const out={favorites:[...new Set((Array.isArray(raw.favorites)?raw.favorites:[]).filter(favorite))].slice(0,5000)};for(const [key,level,units]of structuredCourseSources())out[key]=cleanStructuredCourse(raw[key],units,level);out.plus={checks:{}};if(typeof COURSE_PLUS_GROUPS!=='undefined')for(const [key,v]of Object.entries(raw.plus?.checks||{}))if(COURSE_PLUS_GROUPS.some(g=>g.key===key)&&v&&Number.isInteger(v.score)&&v.score>=0&&v.score<=100&&dateValid(v.date))out.plus.checks[key]={score:v.score,date:v.date};return out;
 }
 function mergeStudyExtras(a,b){
  const x=cleanStudyExtras(a),y=cleanStudyExtras(b);b.favorites=[...new Set([...x.favorites,...y.favorites])];
  for(const [key]of structuredCourseSources()){const old=x[key],next=y[key];for(const [id,v]of Object.entries(old.units)){const z=next.units[id];next.units[id]=z?{...z,done:[...new Set([...v.done,...z.done])],ratings:[...new Set([...v.ratings,...z.ratings])],answers:{...v.answers,...z.answers},review:{...v.review,...z.review},draft:z.draft||v.draft}:v;}
   if(!next.cursor)next.cursor=old.cursor;if(!next.day&&old.day)next.day=old.day;next.number=Math.max(old.number,next.number);if(['n3','n2'].includes(key)){const incoming=Object.keys(next.final.answers).length;next.final={answers:{...old.final.answers,...next.final.answers},submitted:next.final.submitted||!incoming&&old.final.submitted};}else if(!Object.keys(next.final.answers).length)next.final=old.final;b[key]=next;
- }return b;
+ }b.plus={checks:{...x.plus.checks,...y.plus.checks}};for(const [key,v]of Object.entries(x.plus.checks)){const z=b.plus.checks[key];if(!z||v.score>z.score||v.score===z.score&&v.date>z.date)b.plus.checks[key]=v;}return b;
 }

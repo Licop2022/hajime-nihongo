@@ -18,9 +18,9 @@
  function repaint(){
   // Avoid destroying a word card, draft or an open lesson while the learner uses it.
   if(document.activeElement?.matches('input,textarea')||$('#lessonDialog')?.open){pendingPaint=true;return;}
-  const expanded=[...document.querySelectorAll('.n5-word details[open]')].map(d=>d.closest('[data-word-id]')?.dataset.wordId);
+  const expanded=[...document.querySelectorAll('.n5-word details[open],.plus-word details[open]')].map(d=>d.closest('[data-word-id]')?.dataset.wordId);
   const top=window.scrollY;render(false);
-  for(const id of expanded){const el=[...document.querySelectorAll('.n5-word[data-word-id]')].find(x=>x.dataset.wordId===id);if(el)el.querySelector('details').open=true;}
+  for(const id of expanded){const el=[...document.querySelectorAll('.n5-word[data-word-id],.plus-word[data-word-id]')].find(x=>x.dataset.wordId===id);if(el)el.querySelector('details').open=true;}
   window.scrollTo({top,behavior:'instant'});pendingPaint=false;
  }
  function applyDocument(name,payload){
@@ -30,7 +30,7 @@
  const engine=new window.HajimeCloudEngine({
   read:(u,n)=>{if(user?.id!==u)throw Error('账号已切换');return snapshot()[n];},
   apply:(u,n,p)=>{if(user?.id!==u)throw Error('账号已切换');applyDocument(n,p);pendingPaint=true;},
-  isEmpty:(n,p)=>n==='real'?!p.active&&!p.history.length:!p.completed.length&&!p.seen.length&&!p.attempts&&!p.days.length&&!Object.keys(p.wordReviews).length&&!p.textDone.length&&!p.course?.kanji?.length&&!Object.keys(p.course?.units||{}).some(id=>{const x=p.course.units[id];return x.done.length||x.ratings.length||Object.keys(x.answers).length||x.draft;})&&!(p.guide?.foundation||0)&&!p.guide?.archive?.length&&!p.guide?.day?.writing&&!p.activeQuiz&&!p.favorites?.length&&!Object.values(p.n4?.units||{}).some(u=>u.done.length||u.ratings.length||Object.keys(u.answers).length||Object.keys(u.review).length||u.draft)&&!Object.keys(p.n4?.final?.answers||{}).length&&!Object.values(p.n3?.units||{}).some(u=>u.done.length||u.ratings.length||Object.keys(u.answers).length||Object.keys(u.review).length||u.draft)&&!Object.keys(p.n3?.final?.answers||{}).length&&!Object.values(p.n2?.units||{}).some(u=>u.done.length||u.ratings.length||Object.keys(u.answers).length||Object.keys(u.review).length||u.draft)&&!Object.keys(p.n2?.final?.answers||{}).length&&['target','minutes','start'].every(k=>p.plan[k]===emptyState().plan[k]),
+  isEmpty:(n,p)=>n==='real'?!p.active&&!p.history.length:!p.completed.length&&!p.seen.length&&!p.attempts&&!p.days.length&&!Object.keys(p.wordReviews).length&&!p.textDone.length&&!p.course?.kanji?.length&&!Object.keys(p.course?.units||{}).some(id=>{const x=p.course.units[id];return x.done.length||x.ratings.length||Object.keys(x.answers).length||x.draft;})&&!(p.guide?.foundation||0)&&!p.guide?.archive?.length&&!p.guide?.day?.writing&&!p.activeQuiz&&!p.favorites?.length&&!Object.values(p.n4?.units||{}).some(u=>u.done.length||u.ratings.length||Object.keys(u.answers).length||Object.keys(u.review).length||u.draft)&&!Object.keys(p.n4?.final?.answers||{}).length&&!Object.values(p.n3?.units||{}).some(u=>u.done.length||u.ratings.length||Object.keys(u.answers).length||Object.keys(u.review).length||u.draft)&&!Object.keys(p.n3?.final?.answers||{}).length&&!Object.values(p.n2?.units||{}).some(u=>u.done.length||u.ratings.length||Object.keys(u.answers).length||Object.keys(u.review).length||u.draft)&&!Object.keys(p.n2?.final?.answers||{}).length&&!Object.keys(p.plus?.checks||{}).length&&['target','minutes','start'].every(k=>p.plan[k]===emptyState().plan[k]),
   checkpoint:async(u,n)=>readJSON(baseKey(u,n)),
   remember:async(u,n,d)=>put(baseKey(u,n),d),
   backup:async(u,n,d)=>{put('hajime-cloud-conflict-v1:'+u+':'+n,d);},
@@ -55,7 +55,7 @@
  function saveAllForOwner(){rememberLocal();}
  function progressSummary(values){
   const s=cleanState(values.study),r=cleanReal(values.real);
-  return `语法 ${s.completed.length} 课 · 假名 ${s.seen.length} 个 · 复习词汇 ${Object.keys(s.wordReviews).length} 个 · 单元步骤 ${Object.values(s.course.units).reduce((n,u)=>n+u.done.length,0)} 步 · 已自评单词 ${new Set(Object.values(s.course.units).flatMap(u=>u.ratings)).size} 个 · 入门 ${s.guide.foundation} 组 · 学习日 ${s.guide.number} · N4 步骤 ${Object.values(s.n4?.units||{}).reduce((n,u)=>n+u.done.length,0)} 步 · N3 步骤 ${Object.values(s.n3?.units||{}).reduce((n,u)=>n+u.done.length,0)} 步 · N2 步骤 ${Object.values(s.n2?.units||{}).reduce((n,u)=>n+u.done.length,0)} 步 · 收藏 ${s.favorites?.length||0} 项 · 真题历史 ${r.history.length} 次`;
+  return `语法 ${s.completed.length} 课 · 假名 ${s.seen.length} 个 · 复习词汇 ${Object.keys(s.wordReviews).length} 个 · 单元步骤 ${Object.values(s.course.units).reduce((n,u)=>n+u.done.length,0)} 步 · 已自评单词 ${new Set(Object.values(s.course.units).flatMap(u=>u.ratings)).size} 个 · 入门 ${s.guide.foundation} 组 · 学习日 ${s.guide.number} · N4 步骤 ${Object.values(s.n4?.units||{}).reduce((n,u)=>n+u.done.length,0)} 步 · N3 步骤 ${Object.values(s.n3?.units||{}).reduce((n,u)=>n+u.done.length,0)} 步 · N2 步骤 ${Object.values(s.n2?.units||{}).reduce((n,u)=>n+u.done.length,0)} 步 · 阶段新题 ${Object.keys(s.plus?.checks||{}).length}/16 组 · 收藏 ${s.favorites?.length||0} 项 · 真题历史 ${r.history.length} 次`;
  }
  async function bindUser(next){
   if(user?.id===next?.id)return;
